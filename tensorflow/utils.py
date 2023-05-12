@@ -24,53 +24,50 @@ def show_images(images, show_max=5, scale=1, val_range=[0, 255]):
     images = np.array(images)
     #Normalize images
     images = np.clip(((images - val_range[0]) / (val_range[1] - val_range[0])) * 255, 0, 255).astype(np.uint8)
-    
+
     #Adding channel missing axis automatically
-    if images.shape[-1] != 3 and images.shape[-1] != 1:
+    if images.shape[-1] not in [3, 1]:
         if len(images.shape) > 3:
             return
         images = images[...,np.newaxis]
-    
+
     #Adding batch missing axis automatically
     if len(images.shape) == 3:
         images = images[np.newaxis,...]
-    
+
     #Compute max numbers of images to show
     show_max = min(show_max, len(images))
-    
+
     #Concatenate images in x-axis (horizontally)
     images = np.concatenate(images[:show_max], axis=-2)
-    
+
     #Remove extra axis if necessary
     if images.shape[-1] == 1:
         images = images[..., 0]
-    
+
     show_image(images, images.shape[1]*scale, images.shape[0]*scale)
 
 def check_is_image(obj):
     if tf.is_tensor(obj):
         tshape = tf.shape(obj)
-        if len(tshape) == 3:
-            if tshape[-1] == 1 or tshape[-1] == 3:
-                return True
+        if len(tshape) == 3 and tshape[-1] in [1, 3]:
+            return True
     return False
 
 def check_is_batch(obj):
     if tf.is_tensor(obj):
         tshape = tf.shape(obj)
-        if len(tshape) == 4:
-            if tshape[-1] == 1 or tshape[-1] == 3:
-                return True
+        if len(tshape) == 4 and tshape[-1] in [1, 3]:
+            return True
     return False
 
 def recursive_max_horizontal_size(tree):
     if check_is_batch(tree) or check_is_image(tree):
         return tf.shape(tree)[-3]
-    else:
-        max_val = 0
-        for ex in tree:
-            max_val = max(recursive_max_horizontal_size(ex), max_val)
-        return max_val
+    max_val = 0
+    for ex in tree:
+        max_val = max(recursive_max_horizontal_size(ex), max_val)
+    return max_val
 
 def preview_dataset(dataset, show_max=5, scale=1, normalize_scale=True, val_range=[0, 255]):
     dataset_example = list(dataset.prefetch(tf.data.AUTOTUNE).take(show_max)) #Take from dataset, might be slow and unoptimized if dataset is not created from generator...
